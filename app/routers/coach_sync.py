@@ -153,6 +153,20 @@ def build_enriched_coach_students(
                 proto_dict = {}
 
         extracted = _extract_protocol_parts(proto_dict)
+        for ev in evals:
+            try:
+                ep = json.loads(getattr(ev, "protocol_json", None) or "{}")
+            except Exception:
+                ep = {}
+            if isinstance(ep, dict):
+                ex = _extract_protocol_parts(ep)
+                extracted["workouts"] = extracted["workouts"] or ex["workouts"]
+                extracted["meals"] = extracted["meals"] or ex["meals"]
+                extracted["comparative_summary"] = extracted["comparative_summary"] or ex["comparative_summary"]
+                extracted["training_strategy"] = extracted["training_strategy"] or ex["training_strategy"]
+                extracted["nutrition_strategy"] = extracted["nutrition_strategy"] or ex["nutrition_strategy"]
+
+        score_val = next((int(ev.shape_score) for ev in evals if getattr(ev, "shape_score", 0)), 0)
 
         # Consistência e dias inativos reais
         cutoff_14d = (now_utc - timedelta(days=14)).strftime("%Y-%m-%d")
@@ -198,7 +212,7 @@ def build_enriched_coach_students(
         current_w = float(latest.weight_kg) if latest else 0.0
         initial_w = float(oldest.weight_kg) if oldest else current_w
         bf_val = _parse_float(latest.bf_percent, 0.0) if latest else 0.0
-        score_val = int(latest.shape_score) if latest else 0
+        score_val = next((int(ev.shape_score) for ev in evals if getattr(ev, "shape_score", 0)), 0)
         comp_summary = (
             (latest.comparative_summary if latest and latest.comparative_summary else "")
             or extracted["comparative_summary"]
